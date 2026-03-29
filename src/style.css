@@ -2,24 +2,131 @@
   box-sizing: border-box;
 }
 
-body {
+html, body {
   margin: 0;
-  font-family: sans-serif;
+  padding: 0;
+  height: 100%;
   background: #1a1a1a;
   color: #eee;
+  font-family: sans-serif;
+}
+
+body {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.sidebar {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 2rem;
+  gap: 2rem;
+  padding: 1.5rem;
+  width: 180px;
+  flex-shrink: 0;
 }
 
 h1 {
-  margin-bottom: 1.5rem;
+  margin: 0;
+  font-size: 1.3rem;
+  line-height: 1.35;
+}
+
+.hint {
+  margin: 0;
+  color: #555;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+#btn-reset {
+  padding: 0.5rem 0.75rem;
+  background: #333;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+#btn-reset:hover {
+  background: #444;
+  color: #eee;
 }
 
 #app {
+  overflow: hidden;
+  outline: none;
+}
+
+/* ── Board layout ── */
+
+.board-wrapper {
   display: flex;
   flex-direction: column;
+}
+
+.board-row {
+  display: flex;
+  flex-direction: row;
+}
+
+/* Visual boundary: shadow on the edges of the original 8×8 block */
+.board-row--top    { box-shadow: 0 -2px 0 0 #777; }
+.board-row--bottom { box-shadow: 0  2px 0 0 #777; }
+
+.row-label {
+  width: 36px;
+  height: 72px;
+  display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: flex-end;
+  padding-right: 6px;
+  color: #444;
+  font-size: 11px;
+  font-family: monospace;
+  background: #222;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.row-label--original {
+  color: #888;
+}
+
+/* ── Squares ── */
+
+.square {
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.square.light    { background: #f0d9b5; }
+.square.dark     { background: #b58863; }
+.square.selected { background: #f6f669; }
+
+.square:hover { filter: brightness(1.1); }
+
+/* ── Pieces ── */
+
+.piece {
+  font-size: 52px;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.piece.white {
+  color: #fff;
+  text-shadow: 0 0 3px #000, 0 0 3px #000;
+}
+
+.piece.black {
+  color: #1a1a1a;
+  text-shadow: 0 0 3px #888;
 }

@@ -7,15 +7,19 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <aside class="sidebar">
+  <button id="btn-sidebar-open" class="sidebar-open-btn">&raquo;</button>
+  <aside class="sidebar" id="sidebar">
+    <button id="btn-sidebar-close" class="sidebar-close-btn">&laquo;</button>
     <h1>Infinite<br>Armada<br>Chess</h1>
-    <p class="hint">Scroll or ↑↓ to navigate<br>Click piece to select<br>Click target to move</p>
     <p id="status" class="status-text"></p>
-    <button id="btn-reset">Reset board</button>
-    <button id="btn-rotate">Rotate board</button>
-    <button id="btn-export">Export moves</button>
-    <button id="btn-import">Import moves</button>
+    <div class="btn-row">
+      <button id="btn-reset" title="Reset board">&#x21ba;</button>
+      <button id="btn-rotate" title="Rotate board">&#x21c5;</button>
+      <button id="btn-export" title="Export moves">&#x2197;</button>
+      <button id="btn-import" title="Import moves">&#x2199;</button>
+    </div>
     <div id="move-log" class="move-log"></div>
+    <p class="hint">Scroll or &#x2191;&#x2193; to navigate<br>Click piece to select<br>Click target to move</p>
   </aside>
   <div id="app"></div>
   <script type="module" src="main.ts"></script>

@@ -28,7 +28,8 @@ body {
   padding: 1.5rem;
   width: 180px;
   flex-shrink: 0;
-  height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;
 }
 
 h1 {
@@ -237,9 +238,6 @@ h1 {
 /* ── Move log ── */
 
 .move-log {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
   font-family: monospace;
   font-size: 12px;
 }

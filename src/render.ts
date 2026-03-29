@@ -1,9 +1,10 @@
 import type { GameState } from './game';
 import type { Piece, PieceType, Pos } from './types';
 
+// Pawn symbols include U+FE0E (VS15) to force text presentation in Firefox
 const SYMBOLS: Record<string, string> = {
-  'w-K': '♔', 'w-Q': '♕', 'w-R': '♖', 'w-B': '♗', 'w-N': '♘', 'w-P': '♙',
-  'b-K': '♚', 'b-Q': '♛', 'b-R': '♜', 'b-B': '♝', 'b-N': '♞', 'b-P': '♟',
+  'w-K': '♔', 'w-Q': '♕', 'w-R': '♖', 'w-B': '♗', 'w-N': '♘', 'w-P': '♙︎',
+  'b-K': '♚', 'b-Q': '♛', 'b-R': '♜', 'b-B': '♝', 'b-N': '♞', 'b-P': '♟︎',
 };
 
 function symbol(piece: Piece): string {

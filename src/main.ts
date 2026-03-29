@@ -187,6 +187,7 @@ let dragState: {
 app.addEventListener('pointerdown', (e) => {
   if (e.pointerType !== 'touch') return;
   stopMomentum();
+  wasDragging = false;
   dragState = {
     pointerId: e.pointerId,
     startY: e.clientY,

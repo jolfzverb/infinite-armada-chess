@@ -1,6 +1,6 @@
 import { SparseBoard } from './board';
 import { getLegalMoves, getGameStatus, findKing } from './moves';
-import type { CastlingRights, Color, GameStatus, LastMove, PieceType, Pos } from './types';
+import type { CastlingRights, Color, GameStatus, LastMove, Piece, PieceType, Pos } from './types';
 
 export class GameState {
   board = new SparseBoard();
@@ -11,6 +11,8 @@ export class GameState {
   status: GameStatus = 'playing';
   legalMoves: Pos[] = [];
   pendingPromotion: Pos | null = null;
+  moveLog: string[] = [];
+  private pendingNotation = '';
 
   reset(): void {
     this.board = new SparseBoard();
@@ -21,6 +23,8 @@ export class GameState {
     this.status = 'playing';
     this.legalMoves = [];
     this.pendingPromotion = null;
+    this.moveLog = [];
+    this.pendingNotation = '';
   }
 
   click(row: number, col: number): void {
@@ -61,6 +65,10 @@ export class GameState {
 
     const piece = this.board.getCell(sr, sc)!;
 
+    // Compute notation before executing move
+    const isCapture = clickedPiece !== null || (piece.type === 'P' && col !== sc);
+    this.pendingNotation = this.computeNotation({ row: sr, col: sc }, { row, col }, piece, isCapture);
+
     // Execute move
     this.board.setCell(row, col, piece);
     this.board.setCell(sr, sc, null);
@@ -97,6 +105,7 @@ export class GameState {
     }
 
     this.finishTurn();
+    this.recordMove(this.pendingNotation);
   }
 
   promote(pieceType: PieceType): void {
@@ -104,7 +113,9 @@ export class GameState {
     const { row, col } = this.pendingPromotion;
     this.board.setCell(row, col, { type: pieceType, color: this.turn });
     this.pendingPromotion = null;
+    this.pendingNotation += '=' + pieceType;
     this.finishTurn();
+    this.recordMove(this.pendingNotation);
   }
 
   kingPos(color: Color): Pos {
@@ -116,6 +127,63 @@ export class GameState {
     this.legalMoves = [];
     this.turn = this.turn === 'w' ? 'b' : 'w';
     this.status = getGameStatus(this.board, this.turn, this.lastMove, this.castlingRights);
+  }
+
+  private computeNotation(from: Pos, to: Pos, piece: Piece, isCapture: boolean): string {
+    const file = 'abcdefgh';
+    const rank = (r: number) => String(8 - r);
+
+    // Castling
+    if (piece.type === 'K' && Math.abs(to.col - from.col) === 2) {
+      return to.col === 6 ? 'O-O' : 'O-O-O';
+    }
+
+    let notation = '';
+
+    if (piece.type === 'P') {
+      if (isCapture) notation += file[from.col];
+    } else {
+      notation += piece.type;
+      notation += this.disambiguate(piece, from, to);
+    }
+
+    if (isCapture) notation += 'x';
+    notation += file[to.col] + rank(to.row);
+
+    return notation;
+  }
+
+  private disambiguate(piece: Piece, from: Pos, to: Pos): string {
+    const file = 'abcdefgh';
+    const ambiguous: Pos[] = [];
+
+    for (let r = this.board.top - 1; r <= this.board.bottom + 1; r++) {
+      for (let c = 0; c < 8; c++) {
+        if (r === from.row && c === from.col) continue;
+        const cell = this.board.getCell(r, c);
+        if (cell && cell.type === piece.type && cell.color === piece.color) {
+          const moves = getLegalMoves(this.board, { row: r, col: c }, this.lastMove, this.castlingRights);
+          if (moves.some(m => m.row === to.row && m.col === to.col)) {
+            ambiguous.push({ row: r, col: c });
+          }
+        }
+      }
+    }
+
+    if (ambiguous.length === 0) return '';
+
+    const sameFile = ambiguous.some(p => p.col === from.col);
+    const sameRank = ambiguous.some(p => p.row === from.row);
+
+    if (!sameFile) return file[from.col];
+    if (!sameRank) return String(8 - from.row);
+    return file[from.col] + String(8 - from.row);
+  }
+
+  private recordMove(notation: string): void {
+    if (this.status === 'checkmate') notation += '#';
+    else if (this.status === 'check') notation += '+';
+    this.moveLog.push(notation);
   }
 
   private updateCastlingRights(

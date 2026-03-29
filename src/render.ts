@@ -20,6 +20,7 @@ export function render(
   visibleRows: number,
   container: HTMLElement,
   onSquareClick: (row: number, col: number) => void,
+  flipped: boolean = false,
 ): void {
   container.innerHTML = '';
 
@@ -32,11 +33,12 @@ export function render(
   const wrapper = document.createElement('div');
   wrapper.className = 'board-wrapper';
 
-  for (let row = topRow; row < topRow + visibleRows; row++) {
+  for (let i = 0; i < visibleRows; i++) {
+    const row = flipped ? topRow + visibleRows - 1 - i : topRow + i;
     const rowEl = document.createElement('div');
     rowEl.className = 'board-row';
-    if (row === 0) rowEl.classList.add('board-row--top');
-    if (row === 7) rowEl.classList.add('board-row--bottom');
+    if (row === 0) rowEl.classList.add(flipped ? 'board-row--bottom' : 'board-row--top');
+    if (row === 7) rowEl.classList.add(flipped ? 'board-row--top' : 'board-row--bottom');
 
     const label = document.createElement('div');
     const isOriginal = row >= 0 && row <= 7;
@@ -44,7 +46,8 @@ export function render(
     label.textContent = String(8 - row);
     rowEl.appendChild(label);
 
-    for (let col = 0; col < 8; col++) {
+    for (let c = 0; c < 8; c++) {
+      const col = flipped ? 7 - c : c;
       const sq = document.createElement('div');
       const light = (row + col) % 2 === 0;
       sq.className = `square ${light ? 'light' : 'dark'}`;
@@ -102,6 +105,39 @@ export function renderPromotionDialog(
 
   overlay.appendChild(dialog);
   return overlay;
+}
+
+export function renderMoveLog(el: HTMLElement, moveLog: string[]): void {
+  el.innerHTML = '';
+  const totalMoves = Math.ceil(moveLog.length / 2);
+
+  for (let i = totalMoves - 1; i >= 0; i--) {
+    const white = moveLog[i * 2];
+    const black = moveLog[i * 2 + 1] ?? '';
+
+    const line = document.createElement('div');
+    line.className = 'move-line';
+
+    const num = document.createElement('span');
+    num.className = 'move-num';
+    num.textContent = `${i + 1}.`;
+
+    const w = document.createElement('span');
+    w.className = 'move-ply';
+    w.textContent = white;
+
+    line.appendChild(num);
+    line.appendChild(w);
+
+    if (black) {
+      const b = document.createElement('span');
+      b.className = 'move-ply';
+      b.textContent = black;
+      line.appendChild(b);
+    }
+
+    el.appendChild(line);
+  }
 }
 
 export function updateStatus(el: HTMLElement, state: GameState): void {

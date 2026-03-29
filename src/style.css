@@ -24,6 +24,7 @@ body {
   padding: 1.5rem;
   width: 180px;
   flex-shrink: 0;
+  height: 100vh;
 }
 
 h1 {
@@ -39,7 +40,7 @@ h1 {
   line-height: 1.7;
 }
 
-#btn-reset {
+.sidebar button {
   padding: 0.5rem 0.75rem;
   background: #333;
   color: #ccc;
@@ -49,7 +50,7 @@ h1 {
   font-size: 13px;
 }
 
-#btn-reset:hover {
+.sidebar button:hover {
   background: #444;
   color: #eee;
 }
@@ -173,6 +174,33 @@ h1 {
 
 .status-text.gameover {
   color: #f39c12;
+}
+
+/* ── Move log ── */
+
+.move-log {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.move-line {
+  display: flex;
+  gap: 0.4em;
+  padding: 1px 0;
+  color: #aaa;
+}
+
+.move-num {
+  color: #666;
+  min-width: 3ch;
+  text-align: right;
+}
+
+.move-ply {
+  min-width: 6ch;
 }
 
 /* ── Promotion dialog ── */

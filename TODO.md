@@ -1,7 +1,1 @@
-- reset button
-- moving by the rules
-- check condition
-- win condition
-- game move log
 - import moves
-- rotate board

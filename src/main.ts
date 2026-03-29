@@ -1,5 +1,5 @@
 import { GameState } from './game';
-import { render } from './render';
+import { render, renderPromotionDialog, updateStatus } from './render';
 
 const SQUARE_SIZE = 72;
 const VISIBLE_ROWS = Math.floor(window.innerHeight / SQUARE_SIZE);
@@ -8,6 +8,7 @@ const state = new GameState();
 let topRow = -2; // initial view: original board (0–7) near the top
 
 const app = document.getElementById('app')!;
+const statusEl = document.getElementById('status')!;
 app.style.height = `${VISIBLE_ROWS * SQUARE_SIZE}px`;
 app.tabIndex = 0;
 
@@ -16,6 +17,20 @@ function update(): void {
     state.click(row, col);
     update();
   });
+
+  updateStatus(statusEl, state);
+
+  // Promotion dialog
+  const existing = document.querySelector('.promotion-overlay');
+  if (existing) existing.remove();
+
+  if (state.pendingPromotion) {
+    const dialog = renderPromotionDialog(state.turn, (type) => {
+      state.promote(type);
+      update();
+    });
+    document.body.appendChild(dialog);
+  }
 }
 
 const SCROLL_ROWS = 2;

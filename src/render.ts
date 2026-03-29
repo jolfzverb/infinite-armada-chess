@@ -1,5 +1,5 @@
 import type { GameState } from './game';
-import type { Piece } from './types';
+import type { Piece, PieceType, Pos } from './types';
 
 const SYMBOLS: Record<string, string> = {
   'w-K': '♔', 'w-Q': '♕', 'w-R': '♖', 'w-B': '♗', 'w-N': '♘', 'w-P': '♙',
@@ -10,6 +10,10 @@ function symbol(piece: Piece): string {
   return SYMBOLS[`${piece.color}-${piece.type}`];
 }
 
+function posInList(list: Pos[], row: number, col: number): boolean {
+  return list.some(p => p.row === row && p.col === col);
+}
+
 export function render(
   state: GameState,
   topRow: number,
@@ -18,6 +22,12 @@ export function render(
   onSquareClick: (row: number, col: number) => void,
 ): void {
   container.innerHTML = '';
+
+  // Check king position for highlighting
+  let checkKingPos: Pos | null = null;
+  if (state.status === 'check' || state.status === 'checkmate') {
+    checkKingPos = state.kingPos(state.turn);
+  }
 
   const wrapper = document.createElement('div');
   wrapper.className = 'board-wrapper';
@@ -43,6 +53,16 @@ export function render(
         sq.classList.add('selected');
       }
 
+      if (checkKingPos && checkKingPos.row === row && checkKingPos.col === col) {
+        sq.classList.add('in-check');
+      }
+
+      // Legal move highlighting
+      if (posInList(state.legalMoves, row, col)) {
+        const targetPiece = state.board.getCell(row, col);
+        sq.classList.add(targetPiece ? 'legal-capture' : 'legal-move');
+      }
+
       const piece = state.board.getCell(row, col);
       if (piece !== null) {
         const span = document.createElement('span');
@@ -59,4 +79,52 @@ export function render(
   }
 
   container.appendChild(wrapper);
+}
+
+export function renderPromotionDialog(
+  color: 'w' | 'b',
+  onSelect: (type: PieceType) => void,
+): HTMLElement {
+  const overlay = document.createElement('div');
+  overlay.className = 'promotion-overlay';
+
+  const dialog = document.createElement('div');
+  dialog.className = 'promotion-dialog';
+
+  const pieces: PieceType[] = ['Q', 'R', 'B', 'N'];
+  for (const type of pieces) {
+    const btn = document.createElement('div');
+    btn.className = `promo-btn ${color === 'w' ? 'white' : 'black'}`;
+    btn.textContent = SYMBOLS[`${color}-${type}`];
+    btn.addEventListener('click', () => onSelect(type));
+    dialog.appendChild(btn);
+  }
+
+  overlay.appendChild(dialog);
+  return overlay;
+}
+
+export function updateStatus(el: HTMLElement, state: GameState): void {
+  const turnName = state.turn === 'w' ? 'White' : 'Black';
+  el.classList.remove('check', 'gameover');
+
+  switch (state.status) {
+    case 'playing':
+      el.textContent = `${turnName} to move`;
+      break;
+    case 'check':
+      el.textContent = `${turnName} is in check!`;
+      el.classList.add('check');
+      break;
+    case 'checkmate': {
+      const winner = state.turn === 'w' ? 'Black' : 'White';
+      el.textContent = `Checkmate! ${winner} wins`;
+      el.classList.add('gameover');
+      break;
+    }
+    case 'stalemate':
+      el.textContent = 'Stalemate — draw';
+      el.classList.add('gameover');
+      break;
+  }
 }

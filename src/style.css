@@ -109,6 +109,33 @@ h1 {
 .square.light    { background: #f0d9b5; }
 .square.dark     { background: #b58863; }
 .square.selected { background: #f6f669; }
+.square.in-check { background: #e74c3c; }
+
+.square.legal-move::after,
+.square.legal-capture::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.square {
+  position: relative;
+}
+
+.square.legal-move::after {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.square.legal-capture::after {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 5px solid rgba(0, 0, 0, 0.25);
+  background: transparent;
+}
 
 .square:hover { filter: brightness(1.1); }
 
@@ -129,4 +156,61 @@ h1 {
 .piece.black {
   color: #1a1a1a;
   text-shadow: 0 0 3px #888;
+}
+
+/* ── Status ── */
+
+.status-text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: #aaa;
+}
+
+.status-text.check {
+  color: #e74c3c;
+}
+
+.status-text.gameover {
+  color: #f39c12;
+}
+
+/* ── Promotion dialog ── */
+
+.promotion-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.promotion-dialog {
+  background: #2a2a2a;
+  border: 2px solid #555;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.promotion-dialog .promo-btn {
+  width: 72px;
+  height: 72px;
+  font-size: 52px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: #b58863;
+  border: 2px solid #777;
+  border-radius: 4px;
+  user-select: none;
+}
+
+.promotion-dialog .promo-btn:hover {
+  background: #d4a96a;
 }

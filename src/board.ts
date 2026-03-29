@@ -47,6 +47,20 @@ export class SparseBoard {
     this.rows.get(r)![c] = piece;
   }
 
+  get top(): number { return this.topBound; }
+  get bottom(): number { return this.bottomBound; }
+
+  clone(): SparseBoard {
+    const copy = Object.create(SparseBoard.prototype) as SparseBoard;
+    copy.rows = new Map();
+    for (const [r, row] of this.rows) {
+      copy.rows.set(r, row.map(cell => cell ? { ...cell } : null));
+    }
+    copy.topBound = this.topBound;
+    copy.bottomBound = this.bottomBound;
+    return copy;
+  }
+
   private materialize(r: number): void {
     if (r >= this.topBound && r <= this.bottomBound) return;
 

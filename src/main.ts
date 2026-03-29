@@ -1,5 +1,5 @@
 import { GameState } from './game';
-import { render, renderMoveLog, renderPromotionDialog, updateStatus } from './render';
+import { render, renderCaptures, renderMoveLog, renderPromotionDialog, updateStatus } from './render';
 
 function computeLayout() {
   const isMobile = window.innerWidth <= 600;
@@ -20,6 +20,7 @@ let flipped = false;
 const app = document.getElementById('app')!;
 const statusEl = document.getElementById('status')!;
 const moveLogEl = document.getElementById('move-log')!;
+const capturesEl = document.getElementById('captures')!;
 app.tabIndex = 0;
 
 function applyLayout(): void {
@@ -35,6 +36,7 @@ function update(): void {
     update();
   }, flipped);
 
+  renderCaptures(capturesEl, state);
   updateStatus(statusEl, state);
   renderMoveLog(moveLogEl, state.moveLog);
 
@@ -72,21 +74,24 @@ app.addEventListener('keydown', (e) => {
 });
 
 // Touch scroll
-let touchStartY = 0;
-let touchTopRow = topRow;
+let touchLastY = 0;
+let touchAccum = 0;
 
 app.addEventListener('touchstart', (e) => {
-  touchStartY = e.touches[0].clientY;
-  touchTopRow = topRow;
+  touchLastY = e.touches[0].clientY;
+  touchAccum = 0;
 }, { passive: true });
 
 app.addEventListener('touchmove', (e) => {
   e.preventDefault();
-  const deltaY = touchStartY - e.touches[0].clientY;
-  const rowDelta = Math.round(deltaY / SQUARE_SIZE);
-  const newTopRow = touchTopRow + rowDelta * dir();
-  if (newTopRow !== topRow) {
-    topRow = newTopRow;
+  const y = e.touches[0].clientY;
+  touchAccum += (touchLastY - y) * dir();
+  touchLastY = y;
+
+  const steps = Math.trunc(touchAccum / SQUARE_SIZE);
+  if (steps !== 0) {
+    topRow += steps;
+    touchAccum -= steps * SQUARE_SIZE;
     update();
   }
 }, { passive: false });

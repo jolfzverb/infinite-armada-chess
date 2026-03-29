@@ -140,6 +140,40 @@ export function renderMoveLog(el: HTMLElement, moveLog: string[]): void {
   }
 }
 
+function buildCaptureLine(color: 'w' | 'b', captures: PieceType[]): HTMLDivElement {
+  const line = document.createElement('div');
+  line.className = `capture-line cap-${color === 'w' ? 'white' : 'black'}`;
+
+  // King icon for the player
+  const king = document.createElement('span');
+  king.className = 'cap-king';
+  king.textContent = SYMBOLS[`${color}-K`];
+  line.appendChild(king);
+
+  // Group captures by type, ordered by value
+  const order: PieceType[] = ['Q', 'R', 'B', 'N', 'P'];
+  const counts = new Map<PieceType, number>();
+  for (const t of captures) counts.set(t, (counts.get(t) ?? 0) + 1);
+
+  const opponent = color === 'w' ? 'b' : 'w';
+  for (const t of order) {
+    const n = counts.get(t);
+    if (!n) continue;
+    const span = document.createElement('span');
+    span.className = 'cap-piece';
+    span.textContent = SYMBOLS[`${opponent}-${t}`] + (n > 1 ? n : '');
+    line.appendChild(span);
+  }
+
+  return line;
+}
+
+export function renderCaptures(el: HTMLElement, state: GameState): void {
+  el.innerHTML = '';
+  el.appendChild(buildCaptureLine('w', state.captures.w));
+  el.appendChild(buildCaptureLine('b', state.captures.b));
+}
+
 export function updateStatus(el: HTMLElement, state: GameState): void {
   const turnName = state.turn === 'w' ? 'White' : 'Black';
   el.classList.remove('check', 'gameover');

@@ -12,6 +12,7 @@ export class GameState {
   legalMoves: Pos[] = [];
   pendingPromotion: Pos | null = null;
   moveLog: string[] = [];
+  captures: { w: PieceType[], b: PieceType[] } = { w: [], b: [] };
   private pendingNotation = '';
 
   reset(): void {
@@ -24,6 +25,7 @@ export class GameState {
     this.legalMoves = [];
     this.pendingPromotion = null;
     this.moveLog = [];
+    this.captures = { w: [], b: [] };
     this.pendingNotation = '';
   }
 
@@ -68,6 +70,13 @@ export class GameState {
     // Compute notation before executing move
     const isCapture = clickedPiece !== null || (piece.type === 'P' && col !== sc);
     this.pendingNotation = this.computeNotation({ row: sr, col: sc }, { row, col }, piece, isCapture);
+
+    // Record capture
+    if (clickedPiece) {
+      this.captures[this.turn].push(clickedPiece.type);
+    } else if (piece.type === 'P' && col !== sc) {
+      this.captures[this.turn].push('P'); // en passant
+    }
 
     // Execute move
     this.board.setCell(row, col, piece);

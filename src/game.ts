@@ -118,6 +118,129 @@ export class GameState {
     this.recordMove(this.pendingNotation);
   }
 
+  exportMoves(): string {
+    let result = '';
+    for (let i = 0; i < this.moveLog.length; i++) {
+      if (i % 2 === 0) {
+        if (i > 0) result += ' ';
+        result += `${i / 2 + 1}. `;
+      } else {
+        result += ' ';
+      }
+      result += this.moveLog[i];
+    }
+    return result;
+  }
+
+  importMoves(movetext: string): { success: boolean; error?: string } {
+    const tokens = movetext
+      .replace(/\d+\.{1,3}\s*/g, '')
+      .trim()
+      .split(/\s+/)
+      .filter(s => s.length > 0 && !s.match(/^(1-0|0-1|1\/2-1\/2|\*)$/));
+
+    this.reset();
+
+    for (let i = 0; i < tokens.length; i++) {
+      if (!this.applyNotation(tokens[i])) {
+        this.selected = null;
+        this.legalMoves = [];
+        return { success: false, error: `Move ${i + 1}: ${tokens[i]}` };
+      }
+    }
+
+    return { success: true };
+  }
+
+  private applyNotation(notation: string): boolean {
+    if (this.status === 'checkmate' || this.status === 'stalemate') return false;
+
+    let s = notation.replace(/[+#]/g, '');
+
+    // Castling
+    if (s === 'O-O' || s === 'O-O-O') {
+      const king = findKing(this.board, this.turn);
+      const targetCol = s === 'O-O' ? 6 : 2;
+      return this.tryMove(king, { row: king.row, col: targetCol });
+    }
+
+    // Promotion
+    let promotion: PieceType | undefined;
+    const promoMatch = s.match(/=([QRBN])$/);
+    if (promoMatch) {
+      promotion = promoMatch[1] as PieceType;
+      s = s.slice(0, -2);
+    }
+
+    // Piece type
+    let pieceType: PieceType = 'P';
+    if (/^[KQRBN]/.test(s)) {
+      pieceType = s[0] as PieceType;
+      s = s.slice(1);
+    }
+
+    // Remove capture marker
+    s = s.replace('x', '');
+
+    // Parse destination (file + rank at end)
+    const destMatch = s.match(/([a-h])(-?\d+)$/);
+    if (!destMatch) return false;
+
+    const destCol = destMatch[1].charCodeAt(0) - 97;
+    const destRow = 8 - parseInt(destMatch[2], 10);
+
+    // Parse disambiguation prefix
+    const prefix = s.slice(0, s.length - destMatch[0].length);
+    let disambigCol: number | undefined;
+    let disambigRow: number | undefined;
+
+    if (prefix.length > 0) {
+      const dm = prefix.match(/^([a-h])?(-?\d+)?$/);
+      if (!dm) return false;
+      if (dm[1]) disambigCol = dm[1].charCodeAt(0) - 97;
+      if (dm[2] !== undefined) disambigRow = 8 - parseInt(dm[2], 10);
+    }
+
+    // Find matching piece with legal move to destination
+    const to: Pos = { row: destRow, col: destCol };
+
+    for (let r = this.board.top - 1; r <= this.board.bottom + 1; r++) {
+      for (let c = 0; c < 8; c++) {
+        const cell = this.board.getCell(r, c);
+        if (!cell || cell.color !== this.turn || cell.type !== pieceType) continue;
+        if (disambigCol !== undefined && c !== disambigCol) continue;
+        if (disambigRow !== undefined && r !== disambigRow) continue;
+
+        const moves = getLegalMoves(this.board, { row: r, col: c }, this.lastMove, this.castlingRights);
+        if (moves.some(m => m.row === to.row && m.col === to.col)) {
+          return this.tryMove({ row: r, col: c }, to, promotion);
+        }
+      }
+    }
+
+    return false;
+  }
+
+  private tryMove(from: Pos, to: Pos, promotion?: PieceType): boolean {
+    const turnBefore = this.turn;
+
+    this.click(from.row, from.col);
+    if (!this.selected || this.selected.row !== from.row || this.selected.col !== from.col) {
+      this.selected = null;
+      this.legalMoves = [];
+      return false;
+    }
+
+    this.click(to.row, to.col);
+
+    if (this.pendingPromotion) {
+      if (!promotion) return false;
+      this.promote(promotion);
+    }
+
+    return this.turn !== turnBefore;
+  }
+
   kingPos(color: Color): Pos {
     return findKing(this.board, color);
   }

@@ -66,5 +66,27 @@ document.getElementById('btn-rotate')!.addEventListener('click', () => {
   app.focus();
 });
 
+document.getElementById('btn-export')!.addEventListener('click', () => {
+  const text = state.exportMoves();
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('btn-export')!;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Export moves'; }, 1500);
+  });
+  app.focus();
+});
+
+document.getElementById('btn-import')!.addEventListener('click', () => {
+  const input = prompt('Paste moves:');
+  if (input === null || input.trim() === '') return;
+  const result = state.importMoves(input);
+  topRow = -2;
+  update();
+  if (!result.success) {
+    alert(`Invalid move: ${result.error}`);
+  }
+  app.focus();
+});
+
 update();
 app.focus();

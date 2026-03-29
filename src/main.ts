@@ -170,47 +170,84 @@ app.addEventListener('keydown', (e) => {
   }
 });
 
-/* ── Input: touch ── */
+/* ── Input: touch (pointer events for reliable capture) ── */
 
-let touchLastY = 0;
-let touchLastTime = 0;
-let touchVelocity = 0;
+const DRAG_THRESHOLD = 8; // px before a touch becomes a drag
+let wasDragging = false;
 
-app.addEventListener('touchstart', (e) => {
+let dragState: {
+  pointerId: number;
+  startY: number;
+  lastY: number;
+  lastTime: number;
+  velocity: number;
+  isDragging: boolean;
+} | null = null;
+
+app.addEventListener('pointerdown', (e) => {
+  if (e.pointerType !== 'touch') return;
   stopMomentum();
-  touchLastY = e.touches[0].clientY;
-  touchLastTime = performance.now();
-  touchVelocity = 0;
-}, { passive: true });
+  dragState = {
+    pointerId: e.pointerId,
+    startY: e.clientY,
+    lastY: e.clientY,
+    lastTime: performance.now(),
+    velocity: 0,
+    isDragging: false,
+  };
+  app.setPointerCapture(e.pointerId);
+});
 
-app.addEventListener('touchmove', (e) => {
-  e.preventDefault();
-  const y = e.touches[0].clientY;
+app.addEventListener('pointermove', (e) => {
+  if (!dragState || e.pointerId !== dragState.pointerId) return;
+
+  const y = e.clientY;
   const now = performance.now();
-  const dy = (touchLastY - y) * dir();
-  const dt = now - touchLastTime;
+
+  if (!dragState.isDragging) {
+    if (Math.abs(y - dragState.startY) > DRAG_THRESHOLD) {
+      dragState.isDragging = true;
+    } else {
+      return;
+    }
+  }
+
+  e.preventDefault();
+  const dy = (dragState.lastY - y) * dir();
+  const dt = now - dragState.lastTime;
 
   if (dt > 0) {
-    // Exponential moving average for stable velocity tracking
-    const instantV = dy / dt * 16; // normalize to ~px per frame
-    touchVelocity = touchVelocity * 0.4 + instantV * 0.6;
+    const instantV = dy / dt * 16;
+    dragState.velocity = dragState.velocity * 0.4 + instantV * 0.6;
   }
 
   scrollY += dy;
-  touchLastY = y;
-  touchLastTime = now;
+  dragState.lastY = y;
+  dragState.lastTime = now;
   applyScroll();
-}, { passive: false });
+});
 
-function onTouchRelease(): void {
-  // If finger was held still before lifting, don't coast
-  const elapsed = performance.now() - touchLastTime;
-  velocity = elapsed > 100 ? 0 : touchVelocity;
-  startMomentum();
+function onPointerRelease(e: PointerEvent): void {
+  if (!dragState || e.pointerId !== dragState.pointerId) return;
+  if (dragState.isDragging) {
+    wasDragging = true;
+    const elapsed = performance.now() - dragState.lastTime;
+    velocity = elapsed > 100 ? 0 : dragState.velocity;
+    startMomentum();
+  }
+  dragState = null;
 }
 
-app.addEventListener('touchend', onTouchRelease);
-app.addEventListener('touchcancel', onTouchRelease);
+app.addEventListener('pointerup', onPointerRelease);
+app.addEventListener('pointercancel', onPointerRelease);
+
+// Suppress click on squares after a drag gesture
+app.addEventListener('click', (e) => {
+  if (wasDragging) {
+    e.stopPropagation();
+    wasDragging = false;
+  }
+}, { capture: true });
 
 /* ── Resize ── */
 

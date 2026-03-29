@@ -92,6 +92,7 @@ h1 {
 .board-wrapper {
   display: flex;
   flex-direction: column;
+  will-change: transform;
 }
 
 .board-row {

@@ -14,7 +14,7 @@ function computeLayout() {
 let { sq: SQUARE_SIZE, rows: VISIBLE_ROWS } = computeLayout();
 
 const state = new GameState();
-let topRow = -2; // initial view: original board (0–7) near the top
+let scrollY = -2 * SQUARE_SIZE; // continuous pixel offset (replaces discrete topRow)
 let flipped = false;
 
 const app = document.getElementById('app')!;
@@ -23,6 +23,8 @@ const moveLogEl = document.getElementById('move-log')!;
 const capturesEl = document.getElementById('captures')!;
 app.tabIndex = 0;
 
+/* ── Layout ── */
+
 function applyLayout(): void {
   document.documentElement.style.setProperty('--sq', SQUARE_SIZE + 'px');
   app.style.height = `${VISIBLE_ROWS * SQUARE_SIZE}px`;
@@ -30,11 +32,42 @@ function applyLayout(): void {
 
 applyLayout();
 
-function update(): void {
-  render(state, topRow, VISIBLE_ROWS, app, (row, col) => {
+/* ── Rendering ── */
+
+let wrapperEl: HTMLElement | null = null;
+let lastRenderedTopRow: number | null = null;
+
+function getTopRow(): number {
+  return Math.floor(scrollY / SQUARE_SIZE);
+}
+
+function applyScroll(): void {
+  const top = getTopRow();
+  const frac = scrollY - top * SQUARE_SIZE; // always in [0, SQUARE_SIZE)
+
+  if (top !== lastRenderedTopRow || !wrapperEl) {
+    renderBoard();
+    lastRenderedTopRow = top;
+  }
+
+  if (wrapperEl) {
+    wrapperEl.style.transform = `translateY(${-frac}px)`;
+  }
+}
+
+function renderBoard(): void {
+  const top = getTopRow();
+  // Render one extra row so partial rows are visible during smooth scroll
+  render(state, top, VISIBLE_ROWS + 1, app, (row, col) => {
     state.click(row, col);
-    update();
+    fullUpdate();
   }, flipped);
+  wrapperEl = app.querySelector('.board-wrapper');
+}
+
+function fullUpdate(): void {
+  lastRenderedTopRow = null; // force DOM rebuild
+  applyScroll();
 
   renderCaptures(capturesEl, state);
   updateStatus(statusEl, state);
@@ -50,62 +83,159 @@ function update(): void {
   if (state.pendingPromotion) {
     const dialog = renderPromotionDialog(state.turn, (type) => {
       state.promote(type);
-      update();
+      fullUpdate();
     });
     document.body.appendChild(dialog);
   }
 }
 
-const SCROLL_ROWS = 2;
+/* ── Momentum / inertia ── */
+
+let velocity = 0;
+let rafId: number | null = null;
+
+function stopMomentum(): void {
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+  velocity = 0;
+}
+
+function startMomentum(): void {
+  const FRICTION = 0.95;
+  const MIN_VELOCITY = 0.5;
+
+  function tick() {
+    velocity *= FRICTION;
+    if (Math.abs(velocity) < MIN_VELOCITY) {
+      velocity = 0;
+      rafId = null;
+      return;
+    }
+    scrollY += velocity;
+    applyScroll();
+    rafId = requestAnimationFrame(tick);
+  }
+
+  if (Math.abs(velocity) >= MIN_VELOCITY) {
+    rafId = requestAnimationFrame(tick);
+  }
+}
+
+/* ── Smooth scroll animation (for keyboard) ── */
+
+function smoothScrollBy(delta: number): void {
+  stopMomentum();
+  const start = scrollY;
+  const startTime = performance.now();
+  const duration = 150;
+
+  function tick(now: number) {
+    const t = Math.min((now - startTime) / duration, 1);
+    const ease = t * (2 - t); // ease-out quadratic
+    scrollY = start + delta * ease;
+    applyScroll();
+    if (t < 1) {
+      rafId = requestAnimationFrame(tick);
+    } else {
+      rafId = null;
+    }
+  }
+
+  rafId = requestAnimationFrame(tick);
+}
+
+/* ── Input: wheel ── */
 
 const dir = () => flipped ? -1 : 1;
 
 app.addEventListener('wheel', (e) => {
   e.preventDefault();
-  if (e.deltaY !== 0) {
-    topRow += Math.sign(e.deltaY) * SCROLL_ROWS * dir();
-    update();
-  }
+  stopMomentum();
+  scrollY += e.deltaY * dir();
+  applyScroll();
 }, { passive: false });
 
+/* ── Input: keyboard ── */
+
 app.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowUp')   { e.preventDefault(); topRow -= dir(); update(); }
-  if (e.key === 'ArrowDown') { e.preventDefault(); topRow += dir(); update(); }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    smoothScrollBy(-SQUARE_SIZE * dir());
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    smoothScrollBy(SQUARE_SIZE * dir());
+  }
 });
 
-// Touch scroll
+/* ── Input: touch ── */
+
 let touchLastY = 0;
-let touchAccum = 0;
+let touchLastTime = 0;
+let touchVelocity = 0;
 
 app.addEventListener('touchstart', (e) => {
+  stopMomentum();
   touchLastY = e.touches[0].clientY;
-  touchAccum = 0;
+  touchLastTime = performance.now();
+  touchVelocity = 0;
 }, { passive: true });
 
 app.addEventListener('touchmove', (e) => {
   e.preventDefault();
   const y = e.touches[0].clientY;
-  touchAccum += (touchLastY - y) * dir();
-  touchLastY = y;
+  const now = performance.now();
+  const dy = (touchLastY - y) * dir();
+  const dt = now - touchLastTime;
 
-  const steps = Math.trunc(touchAccum / SQUARE_SIZE);
-  if (steps !== 0) {
-    topRow += steps;
-    touchAccum -= steps * SQUARE_SIZE;
-    update();
+  if (dt > 0) {
+    // Exponential moving average for stable velocity tracking
+    const instantV = dy / dt * 16; // normalize to ~px per frame
+    touchVelocity = touchVelocity * 0.4 + instantV * 0.6;
   }
+
+  scrollY += dy;
+  touchLastY = y;
+  touchLastTime = now;
+  applyScroll();
 }, { passive: false });
+
+function onTouchRelease(): void {
+  // If finger was held still before lifting, don't coast
+  const elapsed = performance.now() - touchLastTime;
+  velocity = elapsed > 100 ? 0 : touchVelocity;
+  startMomentum();
+}
+
+app.addEventListener('touchend', onTouchRelease);
+app.addEventListener('touchcancel', onTouchRelease);
+
+/* ── Resize ── */
+
+window.addEventListener('resize', () => {
+  const logicalRow = scrollY / SQUARE_SIZE;
+  ({ sq: SQUARE_SIZE, rows: VISIBLE_ROWS } = computeLayout());
+  scrollY = logicalRow * SQUARE_SIZE;
+  applyLayout();
+  lastRenderedTopRow = null;
+  applyScroll();
+});
+
+/* ── Buttons ── */
 
 document.getElementById('btn-reset')!.addEventListener('click', () => {
   state.reset();
-  topRow = -2;
-  update();
+  scrollY = -2 * SQUARE_SIZE;
+  stopMomentum();
+  fullUpdate();
   app.focus();
 });
 
 document.getElementById('btn-rotate')!.addEventListener('click', () => {
   flipped = !flipped;
-  update();
+  fullUpdate();
   app.focus();
 });
 
@@ -123,8 +253,9 @@ document.getElementById('btn-import')!.addEventListener('click', () => {
   const input = prompt('Paste moves:');
   if (input === null || input.trim() === '') return;
   const result = state.importMoves(input);
-  topRow = -2;
-  update();
+  scrollY = -2 * SQUARE_SIZE;
+  stopMomentum();
+  fullUpdate();
   if (!result.success) {
     alert(`Invalid move: ${result.error}`);
   }
@@ -146,5 +277,7 @@ btnSidebarClose.addEventListener('click', () => {
   btnSidebarOpen.classList.remove('hidden');
 });
 
-update();
+/* ── Init ── */
+
+fullUpdate();
 app.focus();

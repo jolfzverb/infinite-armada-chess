@@ -51,7 +51,8 @@ function applyScroll(): void {
   }
 
   if (wrapperEl) {
-    wrapperEl.style.transform = `translateY(${-frac}px)`;
+    const offset = flipped ? frac - SQUARE_SIZE : -frac;
+    wrapperEl.style.transform = `translateY(${offset}px)`;
   }
 }
 

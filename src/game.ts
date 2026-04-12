@@ -161,7 +161,7 @@ export class GameState {
     return { success: true };
   }
 
-  private applyNotation(notation: string): boolean {
+  applyNotation(notation: string): boolean {
     if (this.status === 'checkmate' || this.status === 'stalemate') return false;
 
     let s = notation.replace(/[+#]/g, '');
